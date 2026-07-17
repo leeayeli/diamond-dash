@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diamond Dash — Classroom Board Game</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12142b;
+    --bg2:#1a1d3d;
+    --panel:#1f2350;
+    --panel2:#262a5e;
+    --cream:#f6f2e8;
+    --gold:#ffc93c;
+    --purple:#9b6dff;
+    --blue:#4fc3f7;
+    --pink:#ff5fa8;
+    --red:#ff3b5c;
+    --green:#4cd787;
+    --orange:#ff8c42;
+    --line:rgba(246,242,232,0.14);
+    --shadow: 0 10px 30px rgba(0,0,0,0.35);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(circle at 15% 10%, rgba(155,109,255,0.18), transparent 40%),
+      radial-gradient(circle at 85% 90%, rgba(79,195,247,0.14), transparent 45%),
+      var(--bg);
+    font-family:'Inter', sans-serif;
+    color:var(--cream);
+    padding:24px;
+  }
+  h1,h2,h3, .tile-label, .brand{ font-family:'Baloo 2', cursive; }
+  .brand{
+    text-align:center;
+    font-size:clamp(28px,4vw,42px);
+    font-weight:800;
+    letter-spacing:0.5px;
+    margin:0 0 4px;
+    background:linear-gradient(90deg,var(--gold),var(--pink),var(--blue));
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+  .subbrand{
+    text-align:center;
+    color:rgba(246,242,232,0.6);
+    margin:0 0 24px;
+    font-size:14px;
+    letter-spacing:0.4px;
+  }
+  #app{ max-width:1200px; margin:0 auto; }
+  button{
+    font-family:'Inter',sans-serif;
+    cursor:pointer;
+    border:none;
+    border-radius:12px;
+    font-weight:600;
+  }
+  .btn{
+    padding:12px 20px;
+    background:var(--gold);
+    color:#20223f;
+    font-size:15px;
+    box-shadow:0 4px 0 #b8931f;
+    transition:transform 0.08s ease;
+  }
+  .btn:active{ transform:translateY(3px); box-shadow:0 1px 0 #b8931f; }
+  .btn.secondary{ background:var(--panel2); color:var(--cream); box-shadow:0 4px 0 #12144a;}
+  .btn.secondary:active{ box-shadow:0 1px 0 #12144a; }
+  .btn.small{ padding:8px 14px; font-size:13px; }
+  .btn:disabled{ opacity:0.4; cursor:not-allowed; }
+
+  /* ---------- Setup screen ---------- */
+  .card{
+    background:var(--panel);
+    border-radius:20px;
+    padding:28px;
+    box-shadow:var(--shadow);
+    border:1px solid var(--line);
+  }
+  .setup-grid{ display:grid; gap:16px; }
+  .player-row{
+    display:flex; align-items:center; gap:12px;
+    background:var(--panel2); padding:10px 14px; border-radius:14px;
+  }
+  .player-row input[type=text]{
+    flex:1; background:transparent; border:none; border-bottom:2px solid var(--line);
+    color:var(--cream); font-size:15px; padding:6px 4px; font-family:'Inter',sans-serif;
+  }
+  .player-row input[type=text]:focus{ outline:none; border-bottom-color:var(--gold); }
+  .token-pick{ display:flex; gap:6px; }
+  .token-opt{
+    width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:17px; border:2px solid transparent; background:#12142b;
+  }
+  .token-opt.selected{ border-color:var(--gold); }
+  .field-row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  label{ font-size:13px; color:rgba(246,242,232,0.7); }
+  select, input[type=number]{
+    background:#12142b; color:var(--cream); border:1px solid var(--line);
+    border-radius:8px; padding:8px 10px; font-family:'Inter',sans-serif;
+  }
+
+  /* ---------- Game layout ---------- */
+  .board-wrap{
+    display:grid;
+    grid-template-columns: repeat(9, minmax(46px,1fr));
+    grid-template-rows: repeat(5, minmax(70px,1fr));
+    gap:6px;
+    background:var(--bg2);
+    padding:10px;
+    border-radius:22px;
+    box-shadow:var(--shadow);
+  }
+  .tile{
+    border-radius:12px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    position:relative;
+    font-weight:700;
+    color:#1a1d3d;
+    padding:4px;
+    min-height:0;
+  }
+  .tile .tile-label{ font-size:clamp(11px,1.6vw,16px); line-height:1; }
+  .tile.C{ background:var(--gold); }
+  .tile.R{ background:var(--purple); color:var(--cream); }
+  .tile.E{ background:var(--blue); }
+  .tile.START{ background:var(--red); color:var(--cream); }
+  .tile.CHANCE{ background:var(--orange); color:#1a1d3d; }
+  .tile .tokens-on-tile{
+    position:absolute; bottom:3px; display:flex; gap:2px; flex-wrap:wrap; justify-content:center;
+  }
+  .tile .tok{ font-size:13px; filter:drop-shadow(0 1px 1px rgba(0,0,0,0.4)); }
+
+  .center-panel{
+    grid-column: 2 / 9;
+    grid-row: 2 / 5;
+    background:var(--panel);
+    border-radius:16px;
+    padding:14px 18px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    align-items:center;
+    justify-content:center;
+  }
+  .diamond-strip{
+    display:flex; gap:6px; background:var(--red); padding:10px 16px; border-radius:14px;
+    box-shadow:0 4px 14px rgba(255,59,92,0.35);
+  }
+  .diamond-strip svg{ width:26px; height:26px; }
+  @keyframes shimmer{ 0%,100%{ opacity:1; } 50%{ opacity:0.55; } }
+  .diamond-strip svg:nth-child(odd){ animation: shimmer 2.4s ease-in-out infinite; }
+
+  .dice-row{ display:flex; align-items:center; gap:16px; }
+  .dice{
+    width:58px; height:58px; border-radius:14px; background:var(--cream); color:#1a1d3d;
+    display:flex; align-items:center; justify-content:center; font-size:28px; font-weight:800;
+    font-family:'Baloo 2',cursive; box-shadow:0 4px 0 #b9b295;
+    transition:transform 0.15s ease;
+  }
+  .dice.rolling{ animation: rollspin 0.5s linear; }
+  @keyframes rollspin{ from{ transform:rotate(0deg) scale(1);} 50%{ transform:rotate(180deg) scale(1.15);} to{ transform:rotate(360deg) scale(1);} }
+
+  .turn-banner{ font-size:15px; text-align:center; }
+  .turn-banner b{ color:var(--gold); }
+
+  .players-panel{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+  .player-chip{
+    display:flex; align-items:center; gap:6px; background:var(--panel2);
+    padding:6px 10px; border-radius:999px; font-size:13px; border:2px solid transparent;
+  }
+  .player-chip.active{ border-color:var(--gold); }
+  .player-chip .diamonds{ color:var(--blue); font-weight:700; }
+  .player-chip .score-mini{ font-size:11px; opacity:0.75; }
+
+  .tile.target{ cursor:pointer; animation: targetPulse 1s ease-in-out infinite; box-shadow:0 0 0 4px var(--cream), 0 0 18px rgba(255,255,255,0.7); z-index:2; }
+  @keyframes targetPulse{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.08); } }
+
+  table.scoreboard{ width:100%; border-collapse:collapse; font-size:13px; }
+  table.scoreboard th, table.scoreboard td{ text-align:left; padding:8px 6px; border-bottom:1px solid var(--line); }
+  table.scoreboard th{ opacity:0.7; font-weight:600; }
+
+  .panel-actions{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+
+  /* ---------- Modal ---------- */
+  #modal-overlay{
+    position:fixed; inset:0; background:rgba(10,11,25,0.72);
+    display:flex; align-items:center; justify-content:center; z-index:50; padding:20px;
+  }
+  #modal-content{
+    background:var(--panel); border-radius:20px; padding:26px; max-width:480px; width:100%;
+    box-shadow:var(--shadow); border:1px solid var(--line); max-height:85vh; overflow:auto;
+  }
+  .opt-btn{
+    display:block; width:100%; text-align:left; padding:12px 14px; margin-top:8px;
+    background:var(--panel2); color:var(--cream); border-radius:12px; font-size:14px;
+  }
+  .opt-btn:hover{ background:#31356e; }
+  .opt-btn.correct{ background:var(--green); color:#12142b; }
+  .opt-btn.wrong{ background:var(--red); color:var(--cream); }
+
+  .tabs{ display:flex; gap:6px; margin-bottom:14px; }
+  .tab-btn{ padding:8px 14px; background:var(--panel2); color:var(--cream); border-radius:10px; font-size:13px;}
+  .tab-btn.active{ background:var(--gold); color:#1a1d3d; }
+  .qa-item{ background:var(--panel2); border-radius:12px; padding:10px 12px; margin-bottom:8px; font-size:13px; }
+  .qa-item .opts{ opacity:0.75; margin-top:4px; }
+  textarea, .qa-item input{
+    width:100%; background:#12142b; color:var(--cream); border:1px solid var(--line);
+    border-radius:8px; padding:8px 10px; font-family:'Inter',sans-serif; margin-top:6px; font-size:13px;
+  }
+  hidden, [hidden]{ display:none !important; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="brand">💎 Diamond Dash</div>
+  <p class="subbrand">POA Chapter 6 & 7 review — <b style="color:#ffc93c;">C</b> Compute · <b style="color:#9b6dff;">R</b> Record · <b style="color:#4fc3f7;">E</b> Explain · <b style="color:#ff8c42;">🎲</b> Chance</p>
+
+  <!-- SETUP -->
+  <div class="card" id="setup-screen">
+    <h2 style="margin-top:0;">Set up your game</h2>
+    <div class="setup-grid" id="playerRows"></div>
+    <div class="field-row" style="margin-top:14px;">
+      <button class="btn secondary small" id="addPlayerBtn">+ Add player</button>
+      <button class="btn secondary small" id="removePlayerBtn">– Remove player</button>
+    </div>
+    <div class="field-row" style="margin-top:18px;">
+      <label>Diamonds to win:</label>
+      <input type="number" id="winTarget" value="15" min="5" max="50" style="width:70px;">
+    </div>
+    <div style="margin-top:22px; display:flex; gap:10px;">
+      <button class="btn" id="startGameBtn">Start Game ▶</button>
+      <button class="btn secondary" id="openEditorFromSetup">Edit Questions</button>
+    </div>
+  </div>
+
+  <!-- GAME -->
+  <div id="game-screen" hidden>
+    <div class="turn-banner" id="turnBanner"></div>
+    <div class="board-wrap" id="boardWrap">
+      <div class="center-panel">
+        <div class="diamond-strip" id="diamondStrip"></div>
+        <div class="dice-row">
+          <div class="dice" id="dice">?</div>
+          <button class="btn" id="rollBtn">Roll Dice</button>
+        </div>
+        <div class="players-panel" id="playersPanel"></div>
+        <div class="panel-actions">
+          <button class="btn secondary small" id="muteBtn">🔊 Sound</button>
+          <button class="btn secondary small" id="scoreboardBtn">Scoreboard</button>
+          <button class="btn secondary small" id="editQuestionsBtn">Edit Questions</button>
+          <button class="btn secondary small" id="restartBtn">Restart</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-overlay" hidden>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+
+  /* ---------------- Board layout ---------------- */
+  // 24-tile perimeter ring on a 9-col x 5-row grid.
+  const tilePositions = [
+    {row:5,col:1}, {row:4,col:1}, {row:3,col:1}, {row:2,col:1}, {row:1,col:1},
+    {row:1,col:2}, {row:1,col:3}, {row:1,col:4}, {row:1,col:5}, {row:1,col:6},
+    {row:1,col:7}, {row:1,col:8}, {row:1,col:9}, {row:2,col:9}, {row:3,col:9},
+    {row:4,col:9}, {row:5,col:9}, {row:5,col:8}, {row:5,col:7}, {row:5,col:6},
+    {row:5,col:5}, {row:5,col:4}, {row:5,col:3}, {row:5,col:2}
+  ];
+  const tileTypes = ['START'];
+  const counters = {C:0,R:0,E:0,CHANCE:0};
+  const labels = ['EXIT'];
+  const chanceIndices = [6,12,18];
+  for(let i=1;i<tilePositions.length;i++){
+    let t;
+    if(chanceIndices.includes(i)){
+      t = 'CHANCE';
+      counters.CHANCE++;
+      tileTypes.push(t);
+      labels.push('?'+counters.CHANCE);
+    } else {
+      t = ['C','R','E'][(i-1)%3];
+      tileTypes.push(t);
+      counters[t]++;
+      labels.push(t+counters[t]);
+    }
+  }
+
+  const TOKENS = [
+    {id:'house-blue', emoji:'🏠', bg:'#4fc3f7'},
+    {id:'house-green', emoji:'🏠', bg:'#4cd787'},
+    {id:'fox', emoji:'🦊', bg:'#ffc93c'},
+    {id:'ghost', emoji:'👻', bg:'#ff5fa8'}
+  ];
+
+  /* ---------------- Audio engine (synthesized, no external files) ---------------- */
+  let audioCtx = null;
+  let musicEnabled = true;
+  let musicTimer = null;
+  let musicStep = 0;
+  const bgMelody = [261.63,329.63,392.00,329.63,293.66,349.23,440.00,349.23];
+
+  function initAudio(){
+    if(!audioCtx){
+      try{ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+      catch(e){ audioCtx = null; }
+    }
+    if(audioCtx && audioCtx.state === 'suspended'){ audioCtx.resume(); }
+  }
+
+  function playTone(freq, startTime, duration, type, vol){
+    if(!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol||0.15, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(startTime);
+    osc.stop(startTime + duration);
+  }
+
+  function startMusic(){
+    if(!musicEnabled || !audioCtx || musicTimer) return;
+    musicTimer = setInterval(()=>{
+      if(!musicEnabled || !audioCtx) return;
+      playTone(bgMelody[musicStep % bgMelody.length], audioCtx.currentTime, 0.35, 'sine', 0.045);
+      musicStep++;
+    }, 450);
+  }
+  function stopMusic(){
+    if(musicTimer){ clearInterval(musicTimer); musicTimer = null; }
+  }
+  function playDiceSound(){
+    if(!musicEnabled || !audioCtx) return;
+    const now = audioCtx.currentTime;
+    for(let i=0;i<4;i++){ playTone(220+Math.random()*280, now+i*0.08, 0.06, 'square', 0.08); }
+  }
+  function playMoveClick(){
+    if(!musicEnabled || !audioCtx) return;
+    playTone(600, audioCtx.currentTime, 0.05, 'square', 0.07);
+  }
+  function playCorrectSound(){
+    if(!musicEnabled || !audioCtx) return;
+    const now = audioCtx.currentTime;
+    playTone(523.25, now, 0.12, 'triangle', 0.18);
+    playTone(783.99, now+0.12, 0.2, 'triangle', 0.18);
+  }
+  function playWrongSound(){
+    if(!musicEnabled || !audioCtx) return;
+    const now = audioCtx.currentTime;
+    playTone(200, now, 0.2, 'sawtooth', 0.1);
+    playTone(150, now+0.15, 0.28, 'sawtooth', 0.1);
+  }
+  function playWinSound(){
+    if(!musicEnabled || !audioCtx) return;
+    const now = audioCtx.currentTime;
+    [523.25,659.25,783.99,1046.5].forEach((f,i)=>playTone(f, now+i*0.15, 0.22, 'triangle', 0.2));
+  }
+
+  /* ---------------- Default question bank ---------------- */
+  /* C = Compute, R = Record, E = Explain — POA Chapter 6 (Revenue & Other Income)
+     and Chapter 7 (Cost of Sales & Other Expenses) */
+  const DEFAULTS = {
+    C: [
+      {q:"Groove Media received $25,000 in payments for the year, of which $2,000 was received in advance. What is the subscription fee revenue earned?", opts:["$25,000","$23,000","$27,000","$2,000"], correct:1},
+      {q:"Fresh and Healthy rents out shop space at $2,000 a month. It received cheques totalling $17,000, with the rest still owing at year end. What is the rent income earned for the year?", opts:["$17,000","$24,000","$19,000","$22,000"], correct:1},
+      {q:"Ann Furniture paid $4,200 for utilities and still owed $300 at year end. What is the total utilities expense for the year?", opts:["$4,200","$3,900","$4,500","$300"], correct:2},
+      {q:"Aries Candy paid $30,000 for 15 months' rent (up to 31 Mar 20X2), for the year ended 31 Dec 20X1. What is the prepaid rent expense at year end?", opts:["$2,000","$6,000","$24,000","$30,000"], correct:1},
+      {q:"Kok Cheng Construction paid $30,000 for insurance and recorded $3,000 as insurance payable. What is the total insurance expense incurred for the year?", opts:["$30,000","$27,000","$33,000","$3,000"], correct:2},
+      {q:"Styloon Professional paid $60,000 rental expense during the year, of which $12,000 was for next year. What rental expense should be recognised this year?", opts:["$60,000","$48,000","$72,000","$12,000"], correct:1},
+      {q:"Swizz Trading received $7,000 in rental income for the year, of which $400 was for next January. What rental income should be reported for this year?", opts:["$7,000","$6,600","$7,400","$400"], correct:1},
+      {q:"Estique Apparel earns $8,000 commission a month and received $88,000 through inter-bank transfers during the year. What is the total commission income earned for the year?", opts:["$88,000","$8,000","$96,000","$80,000"], correct:2},
+      {q:"Top Cleaning Services paid $18,000 for a 15-month advertising campaign starting 1 Jan 20X3. What is the advertising expense for the year ended 31 Dec 20X3?", opts:["$18,000","$14,400","$1,200","$3,600"], correct:1},
+      {q:"Amirah Pte Ltd's annual rental income is $6,500. Cheques of $5,700 were received and recorded. How much rental income is receivable at year end?", opts:["$800","$5,700","$6,500","$1,200"], correct:0}
+    ],
+    R: [
+      {q:"A business receives service fee revenue before providing the service. What is the correct year-end adjusting entry?", opts:["Dr Service fee revenue; Cr Service fee revenue received in advance","Dr Service fee revenue received in advance; Cr Service fee revenue","Dr Cash at bank; Cr Service fee revenue","Dr Trade receivables; Cr Service fee revenue"], correct:0},
+      {q:"Rent income has been earned but not yet received at year end. What is the adjusting entry?", opts:["Dr Rent income; Cr Rent income receivable","Dr Rent income receivable; Cr Rent income","Dr Cash in hand; Cr Rent income","Dr Rent income receivable; Cr Cash at bank"], correct:1},
+      {q:"How is a credit sale of goods recorded?", opts:["Dr Trade receivables; Cr Sales revenue","Dr Sales revenue; Cr Trade receivables","Dr Cash at bank; Cr Sales revenue","Dr Inventory; Cr Sales revenue"], correct:0},
+      {q:"How is the cost of sales recorded when goods are sold?", opts:["Dr Inventory; Cr Cost of sales","Dr Cost of sales; Cr Inventory","Dr Cost of sales; Cr Sales revenue","Dr Trade payables; Cr Cost of sales"], correct:1},
+      {q:"At year end, a business has $300 of utilities expense payable. What is the adjusting entry?", opts:["Dr Utilities expense payable; Cr Utilities expense","Dr Utilities expense; Cr Utilities expense payable","Dr Utilities expense; Cr Cash at bank","Dr Utilities expense payable; Cr Cash at bank"], correct:1},
+      {q:"A business paid rent covering part of next year. What is the year-end adjusting entry for the prepaid portion?", opts:["Dr Prepaid rent expense; Cr Rent expense","Dr Rent expense; Cr Prepaid rent expense","Dr Rent expense; Cr Cash at bank","Dr Prepaid rent expense; Cr Cash at bank"], correct:0},
+      {q:"At the start of the next financial period, how do you reverse service fee revenue received in advance?", opts:["Dr Service fee revenue; Cr Service fee revenue received in advance","Dr Service fee revenue received in advance; Cr Service fee revenue","Dr Service fee revenue received in advance; Cr Cash at bank","Dr Cash at bank; Cr Service fee revenue received in advance"], correct:1},
+      {q:"At the start of the next financial period, how do you reverse expenses payable?", opts:["Dr Expenses payable; Cr Other expenses","Dr Other expenses; Cr Expenses payable","Dr Expenses payable; Cr Cash at bank","Dr Cash at bank; Cr Expenses payable"], correct:0},
+      {q:"How is a sales return from a credit customer recorded?", opts:["Dr Trade receivables; Cr Sales returns","Dr Sales returns; Cr Trade receivables","Dr Sales returns; Cr Sales revenue","Dr Sales revenue; Cr Trade receivables"], correct:1},
+      {q:"What is the closing entry for other income at the end of the financial year?", opts:["Dr Income summary; Cr Other income","Dr Other income; Cr Income summary","Dr Other income; Cr Cash at bank","Dr Cash at bank; Cr Other income"], correct:1}
+    ],
+    E: [
+      {q:"What does the accrual basis of accounting say about recognising revenue?", opts:["Revenue is recognised only when cash is received","Revenue is recognised when it is earned, whether or not cash has been received","Revenue is recognised only at the end of the financial year","Revenue is never recognised until goods are delivered and paid for"], correct:1},
+      {q:"According to the matching theory, when should an expense be recognised?", opts:["Only when cash is paid","In the same period as the income it helped to earn","In the period after the income is earned","Whenever the business chooses"], correct:1},
+      {q:"If service fee revenue received in advance is NOT adjusted at year end, what happens to profit for the year?", opts:["Profit is understated","Profit is overstated","Profit is unaffected","Profit becomes a loss"], correct:1},
+      {q:"If income receivable is NOT adjusted at year end, what happens to current assets?", opts:["Current assets are overstated","Current assets are understated","Current assets are unaffected","Current assets become a liability"], correct:1},
+      {q:"If expenses payable is NOT adjusted at year end, what happens to current liabilities?", opts:["Current liabilities are overstated","Current liabilities are understated","Current liabilities are unaffected","Current liabilities become an asset"], correct:1},
+      {q:"If prepaid expenses are NOT adjusted at year end, what happens to total expenses reported?", opts:["Expenses are overstated","Expenses are understated","Expenses are unaffected","Expenses become a liability"], correct:0},
+      {q:"Why is service fee revenue received in advance classified as a liability?", opts:["Because the business owes the customer cash","Because the business owes the customer a service that has not yet been provided","Because it reduces sales revenue","Because it is money the business has not yet received"], correct:1},
+      {q:"Why is income receivable classified as a current asset?", opts:["Because the business has the right to collect payment for a service already provided","Because it is cash already received","Because it reduces the business's liabilities","Because it is inventory that has not been sold yet"], correct:0},
+      {q:"Where is sales revenue presented in the financial statements?", opts:["As a current asset in the statement of financial position","In the trading portion of the statement of financial performance","As other income after gross profit","As a current liability"], correct:1},
+      {q:"How is service fee revenue presented differently from sales revenue?", opts:["Service fee revenue is presented in the trading portion like sales revenue","Service fee revenue is presented as a separate line item, separate from other income","Service fee revenue is never shown in the financial statements","Service fee revenue is deducted from cost of sales"], correct:1}
+    ],
+    chance: [
+      "Bonus round! Gain 2 diamonds.",
+      "Oh no, a diamond slipped away. Lose 1 diamond.",
+      "Lucky roll! Move forward 2 spaces.",
+      "Slippery slope — move back 2 spaces.",
+      "Diamond shower! Gain 3 diamonds.",
+      "A rival sneaks a diamond from you. Lose 1 diamond to a random player.",
+      "Generous mood — give 1 diamond to a random player.",
+      "Take a breather — skip your next turn.",
+      "Trade fortunes — swap diamonds with a random player.",
+      "Nothing happens. Enjoy the calm."
+    ]
+  };
+
+  let bank = JSON.parse(JSON.stringify(DEFAULTS));
+  let storageAvailable = (typeof window.storage !== 'undefined' && window.storage !== null);
+
+  async function loadBank(){
+    if(!storageAvailable) return;
+    try{
+      const res = await window.storage.get('diamond-dash-questions', false);
+      if(res && res.value){ bank = JSON.parse(res.value); }
+    }catch(e){ /* no saved bank yet, use defaults */ }
+  }
+  async function saveBank(){
+    if(!storageAvailable) return;
+    try{ await window.storage.set('diamond-dash-questions', JSON.stringify(bank), false); }
+    catch(e){ console.error('save failed', e); storageAvailable = false; }
+  }
+
+  /* ---------------- State ---------------- */
+  let state = null;
+
+  function defaultPlayers(n){
+    const arr = [];
+    for(let i=0;i<n;i++){
+      arr.push({name:'Player '+(i+1), token: TOKENS[i%4].id, diamonds:0, position:0, skipNext:false});
+    }
+    return arr;
+  }
+
+  /* ---------------- Setup screen ---------------- */
+  const playerRowsEl = document.getElementById('playerRows');
+  let setupPlayers = defaultPlayers(2);
+
+  function renderSetup(){
+    playerRowsEl.innerHTML = '';
+    setupPlayers.forEach((p, idx)=>{
+      const row = document.createElement('div');
+      row.className = 'player-row';
+      const tokenPick = document.createElement('div');
+      tokenPick.className = 'token-pick';
+      TOKENS.forEach(tok=>{
+        const b = document.createElement('div');
+        b.className = 'token-opt' + (p.token===tok.id ? ' selected':'');
+        b.style.background = tok.bg;
+        b.textContent = tok.emoji;
+        b.onclick = ()=>{ p.token = tok.id; renderSetup(); };
+        tokenPick.appendChild(b);
+      });
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = p.name;
+      input.oninput = (e)=>{ p.name = e.target.value; };
+      row.appendChild(tokenPick);
+      row.appendChild(input);
+      playerRowsEl.appendChild(row);
+    });
+  }
+  renderSetup();
+
+  document.getElementById('addPlayerBtn').onclick = ()=>{
+    if(setupPlayers.length<4){ setupPlayers.push({name:'Player '+(setupPlayers.length+1), token: TOKENS[setupPlayers.length%4].id, diamonds:0, position:0}); renderSetup(); }
+  };
+  document.getElementById('removePlayerBtn').onclick = ()=>{
+    if(setupPlayers.length>2){ setupPlayers.pop(); renderSetup(); }
+  };
+
+  document.getElementById('startGameBtn').onclick = ()=>{
+    const winTarget = parseInt(document.getElementById('winTarget').value) || 15;
+    state = {
+      players: setupPlayers.map(p=>({name:p.name||'.', token:p.token, diamonds:0, position:0, skipNext:false, correct:0, wrong:0})),
+      current: 0,
+      winTarget,
+      over:false,
+      awaitingMove:false,
+      pendingTarget:null,
+      pendingRoll:null
+    };
+    document.getElementById('setup-screen').hidden = true;
+    document.getElementById('game-screen').hidden = false;
+    buildBoard();
+    renderGame();
+    document.getElementById('rollBtn').disabled = false;
+    initAudio();
+    startMusic();
+  };
+
+  document.getElementById('muteBtn').onclick = ()=>{
+    musicEnabled = !musicEnabled;
+    document.getElementById('muteBtn').textContent = musicEnabled ? '🔊 Sound' : '🔇 Sound';
+    if(musicEnabled){ initAudio(); startMusic(); } else { stopMusic(); }
+  };
+
+  /* ---------------- Board rendering ---------------- */
+  const boardWrap = document.getElementById('boardWrap');
+
+  function buildBoard(){
+    document.querySelectorAll('.tile').forEach(t=>t.remove());
+    tilePositions.forEach((pos, i)=>{
+      const el = document.createElement('div');
+      el.className = 'tile ' + tileTypes[i];
+      el.style.gridColumn = pos.col;
+      el.style.gridRow = pos.row;
+      el.dataset.index = i;
+      const label = document.createElement('div');
+      label.className = 'tile-label';
+      label.textContent = labels[i];
+      el.appendChild(label);
+      const tokWrap = document.createElement('div');
+      tokWrap.className = 'tokens-on-tile';
+      tokWrap.id = 'tile-toks-'+i;
+      el.appendChild(tokWrap);
+      boardWrap.insertBefore(el, boardWrap.firstChild);
+    });
+  }
+
+  function tokenInfo(id){ return TOKENS.find(t=>t.id===id); }
+
+  function renderGame(){
+    // clear tokens
+    tilePositions.forEach((_,i)=>{
+      const w = document.getElementById('tile-toks-'+i);
+      if(w) w.innerHTML='';
+    });
+    state.players.forEach(p=>{
+      const w = document.getElementById('tile-toks-'+p.position);
+      if(w){
+        const span = document.createElement('span');
+        span.className = 'tok';
+        span.textContent = tokenInfo(p.token).emoji;
+        w.appendChild(span);
+      }
+    });
+
+    // diamond strip (decorative, fixed 6)
+    const strip = document.getElementById('diamondStrip');
+    strip.innerHTML = '';
+    for(let i=0;i<6;i++){
+      strip.innerHTML += diamondSVG();
+    }
+
+    // players panel
+    const pp = document.getElementById('playersPanel');
+    pp.innerHTML = '';
+    state.players.forEach((p,idx)=>{
+      const chip = document.createElement('div');
+      chip.className = 'player-chip' + (idx===state.current?' active':'');
+      chip.innerHTML = '<span>'+tokenInfo(p.token).emoji+'</span><span>'+escapeHtml(p.name)+'</span><span class="diamonds">💎'+p.diamonds+'</span><span class="score-mini">✅'+(p.correct||0)+' ❌'+(p.wrong||0)+'</span>';
+      pp.appendChild(chip);
+    });
+
+    document.getElementById('turnBanner').innerHTML = state.over ? '' :
+      "It's <b>"+state.players[state.current].name+"</b>'s turn — roll the dice!";
+  }
+
+  function diamondSVG(){
+    return '<svg viewBox="0 0 24 24"><polygon points="12,2 22,9 12,22 2,9" fill="#4fc3f7" stroke="#1a1d3d" stroke-width="1"/><polygon points="12,2 22,9 12,12" fill="#8fe0ff"/></svg>';
+  }
+
+  /* ---------------- Dice + turn logic ---------------- */
+  const diceEl = document.getElementById('dice');
+  document.getElementById('rollBtn').onclick = handleRoll;
+
+  function handleRoll(){
+    document.getElementById('rollBtn').disabled = true;
+    const player = state.players[state.current];
+
+    if(player.skipNext){
+      player.skipNext = false;
+      showSimpleModal("Turn skipped", player.name + " is sitting this turn out.", ()=>{
+        document.getElementById('modal-overlay').hidden = true;
+        advanceTurn();
+      });
+      return;
+    }
+
+    diceEl.classList.add('rolling');
+    playDiceSound();
+    let ticks = 0;
+    const spin = setInterval(()=>{
+      diceEl.textContent = 1+Math.floor(Math.random()*6);
+      ticks++;
+      if(ticks>8){
+        clearInterval(spin);
+        diceEl.classList.remove('rolling');
+        const roll = 1+Math.floor(Math.random()*6);
+        diceEl.textContent = roll;
+        prepareMove(player, roll);
+      }
+    }, 60);
+  }
+
+  function prepareMove(player, roll){
+    const target = (player.position + roll) % tilePositions.length;
+    state.awaitingMove = true;
+    state.pendingTarget = target;
+    state.pendingRoll = roll;
+    document.querySelectorAll('.tile').forEach(t=>t.classList.remove('target'));
+    const el = document.querySelector('.tile[data-index="'+target+'"]');
+    if(el) el.classList.add('target');
+    document.getElementById('turnBanner').innerHTML =
+      "<b>"+player.name+"</b> rolled a <b>"+roll+"</b>! Tap the glowing tile to move there.";
+  }
+
+  boardWrap.addEventListener('click', (e)=>{
+    if(!state || !state.awaitingMove) return;
+    const tileEl = e.target.closest('.tile');
+    if(!tileEl) return;
+    const idx = parseInt(tileEl.dataset.index, 10);
+    if(idx !== state.pendingTarget) return;
+    executeMove();
+  });
+
+  function executeMove(){
+    playMoveClick();
+    const player = state.players[state.current];
+    const start = player.position;
+    const roll = state.pendingRoll;
+    const passedStart = (start + roll) >= tilePositions.length;
+    player.position = state.pendingTarget;
+    if(passedStart){
+      player.diamonds += 1; // passing EXIT bonus
+    }
+    state.awaitingMove = false;
+    state.pendingTarget = null;
+    state.pendingRoll = null;
+    document.querySelectorAll('.tile').forEach(t=>t.classList.remove('target'));
+    renderGame();
+    setTimeout(()=>resolveTile(player), 200);
+  }
+
+  function resolveTile(player){
+    const idx = player.position;
+    const type = tileTypes[idx];
+    if(type==='START'){
+      showCreativeTile(player);
+    } else if(type==='C'){
+      showQuestion(player, bank.C, 2, 'Compute');
+    } else if(type==='R'){
+      showQuestion(player, bank.R, 2, 'Record');
+    } else if(type==='E'){
+      showQuestion(player, bank.E, 3, 'Explain');
+    } else if(type==='CHANCE'){
+      showChanceTile(player);
+    }
+  }
+
+  function showChanceTile(player){
+    if(Math.random() < 0.5 && bank.chance && bank.chance.length){
+      const card = bank.chance[Math.floor(Math.random()*bank.chance.length)];
+      applyChanceCard(player, card);
+    } else {
+      const pool = [].concat(bank.C||[], bank.R||[], bank.E||[]);
+      showQuestion(player, pool, 2, '🎲 Surprise Question', 1);
+    }
+  }
+
+  function applyChanceCard(player, card){
+    let extra = '';
+    const lower = card.toLowerCase();
+    if(lower.includes('gain 2')) player.diamonds += 2;
+    else if(lower.includes('gain 3')) player.diamonds += 3;
+    else if(lower.includes('lose 1 diamond to a random player')){
+      player.diamonds = Math.max(0, player.diamonds-1);
+      const others = state.players.filter(p=>p!==player);
+      if(others.length){ const r = others[Math.floor(Math.random()*others.length)]; r.diamonds+=1; extra=' ('+r.name+' gained it!)'; }
+    }
+    else if(lower.includes('lose 1')) player.diamonds = Math.max(0, player.diamonds-1);
+    else if(lower.includes('forward 2')) player.position = (player.position+2)%tilePositions.length;
+    else if(lower.includes('back 2')) player.position = (player.position-2+tilePositions.length)%tilePositions.length;
+    else if(lower.includes('skip your next turn')) player.skipNext = true;
+    else if(lower.includes('swap diamonds with a random player')){
+      const others = state.players.filter(p=>p!==player);
+      if(others.length){ const r = others[Math.floor(Math.random()*others.length)]; const tmp=player.diamonds; player.diamonds=r.diamonds; r.diamonds=tmp; extra=' (swapped with '+r.name+'!)'; }
+    }
+    else if(lower.includes('give 1 diamond')){
+      const others = state.players.filter(p=>p!==player);
+      if(others.length && player.diamonds>0){ player.diamonds-=1; const r = others[Math.floor(Math.random()*others.length)]; r.diamonds+=1; extra=' ('+r.name+' received it!)'; }
+    }
+    showSimpleModal("🎲 Chance!", escapeHtml(card) + extra, finishTile);
+  }
+
+  function showCreativeTile(player){
+    showSimpleModal("EXIT — Bonus Challenge",
+      player.name + " landed on the start tile! Give them a quick creative task, then award diamonds:<br><br><i>e.g. \"Write a great headline\" or \"Explain this topic in 5 seconds\"</i>",
+      null, [
+        {label:'Award 1 💎', action:()=>{ player.diamonds+=1; finishTile(); }},
+        {label:'Award 2 💎', action:()=>{ player.diamonds+=2; finishTile(); }},
+        {label:'Skip', action:()=>{ finishTile(); }}
+      ]);
+  }
+
+  function showQuestion(player, list, reward, title, penalty){
+    penalty = penalty || 0;
+    if(!list || list.length===0){ finishTile(); return; }
+    const q = list[Math.floor(Math.random()*list.length)];
+    const content = document.getElementById('modal-content');
+    content.innerHTML = '<h3 style="margin-top:0;">'+ escapeHtml(title||'Question') +'</h3><p>'+escapeHtml(q.q)+'</p>';
+    q.opts.forEach((opt, i)=>{
+      const b = document.createElement('button');
+      b.className = 'opt-btn';
+      b.textContent = opt;
+      b.onclick = ()=>{
+        const allBtns = content.querySelectorAll('.opt-btn');
+        allBtns.forEach(bt=>bt.disabled=true);
+        if(i===q.correct){
+          b.classList.add('correct');
+          player.diamonds += reward;
+          player.correct = (player.correct||0)+1;
+          playCorrectSound();
+        } else {
+          b.classList.add('wrong');
+          allBtns[q.correct].classList.add('correct');
+          player.wrong = (player.wrong||0)+1;
+          if(penalty){ player.diamonds = Math.max(0, player.diamonds - penalty); }
+          playWrongSound();
+        }
+        const doneBtn = document.createElement('button');
+        doneBtn.className = 'btn small';
+        doneBtn.style.marginTop='14px';
+        doneBtn.textContent = 'Continue';
+        doneBtn.onclick = finishTile;
+        content.appendChild(doneBtn);
+      };
+      content.appendChild(b);
+    });
+    document.getElementById('modal-overlay').hidden = false;
+  }
+
+  function showSimpleModal(title, body, onContinue, customButtons){
+    const content = document.getElementById('modal-content');
+    content.innerHTML = '<h3 style="margin-top:0;">'+title+'</h3><p>'+body+'</p>';
+    if(customButtons){
+      customButtons.forEach(cfg=>{
+        const b = document.createElement('button');
+        b.className = 'btn small';
+        b.style.marginRight='8px';
+        b.style.marginTop='10px';
+        b.textContent = cfg.label;
+        b.onclick = cfg.action;
+        content.appendChild(b);
+      });
+    } else {
+      const b = document.createElement('button');
+      b.className = 'btn small';
+      b.style.marginTop='14px';
+      b.textContent = 'Continue';
+      b.onclick = onContinue;
+      content.appendChild(b);
+    }
+    document.getElementById('modal-overlay').hidden = false;
+  }
+
+  function finishTile(){
+    document.getElementById('modal-overlay').hidden = true;
+    renderGame();
+    checkWin();
+  }
+
+  function checkWin(){
+    const winner = state.players.find(p=>p.diamonds>=state.winTarget);
+    if(winner){
+      state.over = true;
+      renderGame();
+      document.getElementById('rollBtn').disabled = true;
+      stopMusic();
+      playWinSound();
+      showSimpleModal("🏆 We have a winner!", winner.name+" reached "+winner.diamonds+" diamonds!", ()=>{
+        document.getElementById('modal-overlay').hidden = true;
+      });
+      return;
+    }
+    advanceTurn();
+  }
+
+  function advanceTurn(){
+    state.current = (state.current+1) % state.players.length;
+    renderGame();
+    document.getElementById('rollBtn').disabled = false;
+  }
+
+  function escapeHtml(str){
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  function showScoreboard(){
+    const sorted = [...state.players].sort((a,b)=>b.diamonds-a.diamonds);
+    const rows = sorted.map(p=>{
+      const total = (p.correct||0)+(p.wrong||0);
+      const acc = total ? Math.round((p.correct||0)/total*100) : 0;
+      return '<tr><td>'+tokenInfo(p.token).emoji+' '+escapeHtml(p.name)+'</td><td>💎'+p.diamonds+'</td><td>✅ '+(p.correct||0)+'</td><td>❌ '+(p.wrong||0)+'</td><td>'+acc+'%</td></tr>';
+    }).join('');
+    const content = document.getElementById('modal-content');
+    content.innerHTML = '<h3 style="margin-top:0;">📊 Scoreboard</h3>'
+      + '<table class="scoreboard"><thead><tr><th>Player</th><th>Diamonds</th><th>Correct</th><th>Wrong</th><th>Accuracy</th></tr></thead>'
+      + '<tbody>'+rows+'</tbody></table>';
+    const b = document.createElement('button');
+    b.className = 'btn small';
+    b.style.marginTop = '16px';
+    b.textContent = 'Close';
+    b.onclick = ()=>{ document.getElementById('modal-overlay').hidden = true; };
+    content.appendChild(b);
+    document.getElementById('modal-overlay').hidden = false;
+  }
+  document.getElementById('scoreboardBtn').onclick = showScoreboard;
+
+  document.getElementById('modal-overlay').addEventListener('click', (e)=>{
+    // prevent accidental close-on-backdrop for game flow integrity; modal only closes via buttons
+  });
+
+  document.getElementById('restartBtn').onclick = ()=>{
+    stopMusic();
+    document.getElementById('game-screen').hidden = true;
+    document.getElementById('setup-screen').hidden = false;
+  };
+
+  /* ---------------- Question editor ---------------- */
+  const editorOverlay = document.getElementById('modal-overlay');
+  function openEditor(){
+    const content = document.getElementById('modal-content');
+    let activeTab = 'C';
+    function renderTabs(){
+      const storageNote = storageAvailable
+        ? ''
+        : '<p style="font-size:12px;opacity:0.65;margin:-6px 0 12px;">Note: running as a standalone file, so edits here will only last for this session (they reset if you reload the page).</p>';
+      let html = '<h3 style="margin-top:0;">Edit Questions</h3>' + storageNote + '<div class="tabs">'
+        + tabBtn('C','Compute') + tabBtn('R','Record') + tabBtn('E','Explain') + tabBtn('chance','Chance')
+        + '</div><div id="editorBody"></div>'
+        + '<div style="margin-top:14px; display:flex; gap:8px;">'
+        + '<button class="btn small" id="closeEditorBtn">Done</button>'
+        + '<button class="btn secondary small" id="resetEditorBtn">Reset to defaults</button>'
+        + '</div>';
+      content.innerHTML = html;
+      document.querySelectorAll('.tab-btn').forEach(b=>{
+        b.onclick = ()=>{ activeTab = b.dataset.tab; renderTabs(); };
+      });
+      document.getElementById('closeEditorBtn').onclick = ()=>{ saveBank(); editorOverlay.hidden = true; };
+      document.getElementById('resetEditorBtn').onclick = ()=>{
+        bank = JSON.parse(JSON.stringify(DEFAULTS));
+        renderTabs();
+      };
+      renderEditorBody();
+    }
+    function tabBtn(key,label){
+      return '<button class="tab-btn'+(activeTab===key?' active':'')+'" data-tab="'+key+'">'+label+'</button>';
+    }
+    function renderEditorBody(){
+      const body = document.getElementById('editorBody');
+      body.innerHTML = '';
+      if(activeTab === 'chance'){
+        bank.chance.forEach((card,i)=>{
+          const div = document.createElement('div');
+          div.className = 'qa-item';
+          div.innerHTML = '<div>'+escapeHtml(card)+'</div>';
+          const del = document.createElement('button');
+          del.className = 'btn small secondary';
+          del.style.marginTop='6px';
+          del.textContent = 'Remove';
+          del.onclick = ()=>{ bank.chance.splice(i,1); renderEditorBody(); };
+          div.appendChild(del);
+          body.appendChild(div);
+        });
+        const addWrap = document.createElement('div');
+        addWrap.className = 'qa-item';
+        addWrap.innerHTML = '<textarea id="newChanceText" placeholder="New chance card text, e.g. Gain 2 diamonds."></textarea>';
+        const addBtn = document.createElement('button');
+        addBtn.className = 'btn small';
+        addBtn.style.marginTop = '6px';
+        addBtn.textContent = 'Add chance card';
+        addBtn.onclick = ()=>{
+          const v = document.getElementById('newChanceText').value.trim();
+          if(v){ bank.chance.push(v); renderEditorBody(); }
+        };
+        addWrap.appendChild(addBtn);
+        body.appendChild(addWrap);
+        return;
+      }
+      {
+        bank[activeTab].forEach((item,i)=>{
+          const div = document.createElement('div');
+          div.className = 'qa-item';
+          div.innerHTML = '<b>'+escapeHtml(item.q)+'</b><div class="opts">Options: '+item.opts.map((o,oi)=>(oi===item.correct?'<u>'+escapeHtml(o)+'</u>':escapeHtml(o))).join(' · ')+'</div>';
+          const del = document.createElement('button');
+          del.className = 'btn small secondary';
+          del.style.marginTop='6px';
+          del.textContent = 'Remove';
+          del.onclick = ()=>{ bank[activeTab].splice(i,1); renderEditorBody(); };
+          div.appendChild(del);
+          body.appendChild(div);
+        });
+        const form = document.createElement('div');
+        form.className = 'qa-item';
+        form.innerHTML = '<input id="newQ" placeholder="Question text">'
+          + '<input id="newO0" placeholder="Option A (correct)">'
+          + '<input id="newO1" placeholder="Option B">'
+          + '<input id="newO2" placeholder="Option C">'
+          + '<input id="newO3" placeholder="Option D">';
+        const addBtn = document.createElement('button');
+        addBtn.className = 'btn small';
+        addBtn.style.marginTop='6px';
+        addBtn.textContent = 'Add question (option A = correct answer)';
+        addBtn.onclick = ()=>{
+          const q = document.getElementById('newQ').value.trim();
+          const o0 = document.getElementById('newO0').value.trim();
+          const o1 = document.getElementById('newO1').value.trim();
+          const o2 = document.getElementById('newO2').value.trim();
+          const o3 = document.getElementById('newO3').value.trim();
+          if(q && o0 && o1){
+            const opts = [o0,o1,o2,o3].filter(x=>x);
+            bank[activeTab].push({q, opts, correct:0});
+            renderEditorBody();
+          }
+        };
+        form.appendChild(addBtn);
+        body.appendChild(form);
+      }
+    }
+    renderTabs();
+    editorOverlay.hidden = false;
+  }
+
+  document.getElementById('editQuestionsBtn').onclick = openEditor;
+  document.getElementById('openEditorFromSetup').onclick = openEditor;
+
+  loadBank();
+})();
+</script>
+</body>
+</html>
